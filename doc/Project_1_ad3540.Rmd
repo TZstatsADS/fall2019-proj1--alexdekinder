@@ -1,19 +1,89 @@
 ---
-title: "R Notebook"
+title: "Project 1 - Song Analysis"
 output: html_notebook
+author: "Alexandra DeKinder"
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+In this project I will build a model that uses characteristics of songs and their lyrics to predict the decade the song was created. 
 
-```{r}
-plot(cars)
+#Data Cleaning
+
+```{r Libraries}
+library(readr)
+
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+```{r Importing Data}
+artists <- read_csv("/Users/alexandradekinder/Documents/GitHub/fall2019-proj1--alexdekinder/data/artists.csv")
+load("~/Documents/GitHub/fall2019-proj1--alexdekinder/data/lyrics.RData")
+```
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+In order to build the model, I first want to remove the variables I won't be using from the given data. Since the artist of the song would be too strong of an indicator of the decade the song was written, I will not be using that in the model. I will keep my focus to the content of the lyrics and the genre of the song. 
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+First, I am going to look at some of the charactersitics of the dt_lyrics dataset.
 
+```{r Data Charactersitics}
+#Number of songs
+nrow(dt_lyrics)
+
+#The different genres represented
+levels(as.factor(dt_lyrics$genre))
+
+#The number of different artistis represented
+count<-levels(as.factor(dt_lyrics$artist))
+length(count)
+
+#Date range of the data
+min(dt_lyrics$year)
+max(dt_lyrics$year)
+
+```
+
+When looking at the date range of the songs, we see that there is a song with the year 112. In order to determine the reason for this we need to further inspect the data. 
+
+One way to check to see if there are any other odd dates in the data, we can look at any observations with a year less than 1000.
+
+```{r Error Check}
+
+#Checking for other outliers
+dt_lyrics[dt_lyrics$year < 1000,]
+
+
+```
+
+
+The above outut shows that there are actually two observations with dates outside of a normal range. 
+One solution would be if there was clearly an error like a date should be 1992 but is written as 992, then one could infer that the 1 was left off and just correct the data point manually. In our case, it does not appear that this is the obviouls error so in order to be safe I will remove these two observations.
+
+
+```{r Data Cleaning}
+
+#Removing incorrect observations
+clean_lyrics <- dt_lyrics %>%
+  filter(year > 1000)
+
+#We can also remove the artist column fromt the data set since we will not be using it in the model
+clean_lyrics <- clean_lyrics %>%
+  select(-artist)
+
+
+```
+
+
+Now, for my response variable I will be using decade the the song was written. The given data set gives the year the song was written so I will need to create a new column that contains the decade of the song.
+
+
+```{r Creating Decade Variable}
+
+clean_lyrics <- clean_lyrics %>%
+  mutate(year = as.numeric(year)) %>%
+  mutate(Decade = if_else(year < "1970", "1960",
+         if_else( year < "1980" & year > "1969", "1970",
+                                 if_else(year < "1990" & year > "1979", "1980",
+                                         if_else(year < "2000" & year > "1989", "1990",
+                                                 if_else(year < "2010" & year > "1999", "2000",
+                                                         if_else(year > "2009", "2010", "NA")))))))
+
+
+```
