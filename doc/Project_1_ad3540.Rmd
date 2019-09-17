@@ -5,18 +5,39 @@ author: "Alexandra DeKinder"
 ---
 
 
+
+
 In this project I will build a model that uses characteristics of songs and their lyrics to predict the decade the song was created. 
 
-#Data Cleaning
+#Data Processing
 
-```{r Libraries}
+```{r Libraries, echo=FALSE}
 library(readr)
+library(rvest)
+library(tibble)
+library(sentimentr)
+library(gplots)
+library(dplyr)
+library(tm)
+library(syuzhet)
+library(factoextra)
+library(beeswarm)
+library(scales)
+library(RColorBrewer)
+library(RANN)
+library(topicmodels)
+library(MASS)
+library(class)
+library(psych)
+library(gmodels)
 
 ```
 
+I will use the cleaned data that is outputted from the Text_Processing.Rmd file.
+
 ```{r Importing Data}
 artists <- read_csv("/Users/alexandradekinder/Documents/GitHub/fall2019-proj1--alexdekinder/data/artists.csv")
-load("~/Documents/GitHub/fall2019-proj1--alexdekinder/data/lyrics.RData")
+load("~/Documents/GitHub/fall2019-proj1--alexdekinder/output/processed_lyrics.RData")
 ```
 
 In order to build the model, I first want to remove the variables I won't be using from the given data. Since the artist of the song would be too strong of an indicator of the decade the song was written, I will not be using that in the model. I will keep my focus to the content of the lyrics and the genre of the song. 
@@ -87,3 +108,193 @@ clean_lyrics <- clean_lyrics %>%
 
 
 ```
+
+I will add the number of words in the song (e.g song length) as another possible predictor variable.
+
+```{r Creating Song Length}
+
+clean_lyrics <- clean_lyrics %>%
+  mutate(Length = sapply(strsplit(lyrics, " "), length))
+
+
+```
+
+The last two predictors I will add are the topic of the song and the overall sentiment. For this sentiment analysis I will be using a sentiment score that ranges between 
+
+
+```{r Sentiment}
+
+clean_lyrics <- clean_lyrics %>%
+  mutate(sentiment=get_sentiment(lyrics)) #Getting sentiment score
+
+clean_lyrics$sentiment <- round(clean_lyrics$sentiment,3) #Rounding score values
+  
+#We can visulaize the sentiment score by decade in a bar chart
+
+graph.data <- clean_lyrics %>%
+  group_by(Decade) %>%
+  summarise(Avg.Sentiment = mean(sentiment))
+
+ggplot(graph.data,aes(x=Decade,y=Avg.Sentiment,fill=Decade)) +
+  geom_bar(stat="identity") + theme_minimal() +
+  ggtitle("Average Sentiment Score by Decade")
+```
+
+https://blog.exploratory.io/twitter-sentiment-analysis-scoring-by-sentence-b4d455de3560
+
+In the graph we can see that the average sentiment score varies greatly between the decades. The last predictor I am going to create is the topic of each song. In order to do this I will use topic modeling. The majority of this code is taken from the Week 2 Class tutorial on topic modeling.
+
+```{r Topic Modeling}
+docs<-Corpus(VectorSource(clean_lyrics$stemmedwords))
+
+dtm <- DocumentTermMatrix(docs)
+
+rownames(dtm) <- paste(corpus.list$type, corpus.list$File,
+                       corpus.list$Term, corpus.list$sent.id, sep="_")
+rowTotals <- apply(dtm , 1, sum) #Find the sum of words in each Document
+dtm  <- dtm[rowTotals> 0, ]
+corpus.list=corpus.list[rowTotals>0, ]
+```
+
+Run LDA
+
+```{r}
+#Set parameters for Gibbs sampling
+burnin <- 4000
+iter <- 2000
+thin <- 500
+seed <-list(2003,5,63,100001,765)
+nstart <- 5
+best <- TRUE
+#Number of topics
+k <- 15
+#Run LDA using Gibbs sampling
+ldaOut <-lda(dtm, k, method="Gibbs", control=list(nstart=nstart, 
+                                                 seed = seed, best=best,
+                                                 burnin = burnin, iter = iter, 
+                                                 thin=thin))
+#write out results
+#docs to topics
+ldaOut.topics <- as.matrix(topics(ldaOut))
+table(c(1:k, ldaOut.topics))
+write.csv(ldaOut.topics,file=paste("../out/LDAGibbs",k,"DocsToTopics.csv"))
+
+
+
+```
+
+
+#Model Building
+
+The first model I am going to try is a simple linear regression. I will use the predictors genre, length, sentiment score and topic.
+
+
+```{r Linear Regression}
+
+lm.model<-lm(Decade~genre + Length + sentiment, data = clean_lyrics)
+summary(lm.model)
+
+```
+
+In the model summary we can see that there are some predictors that are more significant than others. Both length of the song and sentiment seem significant when predicting the decade; however, not all genres are coming up as significant predictors. Another test to see which predictors build the best model is using forward/backward selection using AIC.
+
+```{r lm Variable Selection}
+
+step.model <- stepAIC(lm.model, direction = "both", 
+                      trace = TRUE)
+step.model
+
+
+```
+
+We can see that the step-wise variable selection using AIC produces the same model in the previous section. Another way to evaluate the model is with diagnostiv plots.
+
+```{r lm Plots}
+
+plot(lm.model)
+
+```
+
+Clearly, linear modeling is not the way to approach this problem. A better approach might be clustering. In the next section I will use KNN clustering to see if that is able to accurately put songs into the correct decade.
+
+
+#KNN Clustering
+
+https://towardsdatascience.com/k-nearest-neighbors-algorithm-with-examples-in-r-simply-explained-knn-1f2c88da405c
+https://quantdev.ssri.psu.edu/sites/qdev/files/kNN_tutorial.html
+
+
+```{r KNN}
+#We first need to split the data into training and test sets
+set.seed(1234)
+train.rows <- sample(1:nrow(clean_lyrics),.80*nrow(clean_lyrics))
+
+#Before we run KNN, we must normalize the numeric predictors and dummy code the genre variable
+
+normalize <- function(x) {(x-min(x))/(max(x)-min(x))}
+
+norm.clean_lyrics <- clean_lyrics
+
+norm.clean_lyrics$sentiment <- normalize(clean_lyrics$sentiment)
+norm.clean_lyrics$Length <- normalize(clean_lyrics$Length)
+
+Genre.data <-as.data.frame(dummy.code(norm.clean_lyrics$genre)) 
+
+norm.clean_lyrics<-norm.clean_lyrics[,-c(1:6)]
+norm.clean_lyrics<-cbind(norm.clean_lyrics,Genre.data)
+
+
+#Separating training set
+
+lyrics_train <- norm.clean_lyrics[train.rows,]
+
+#Separating test set
+
+lyrics_test <-  norm.clean_lyrics[-train.rows,]
+
+#Extract decade column since that is the response variable
+
+lyrics_decade <-(clean_lyrics[train.rows,"Decade"])
+lyrics_train <- lyrics_train[,-1]
+
+
+lyrics_test_decade <- (clean_lyrics[-train.rows,"Decade"])
+lyrics_test <- lyrics_test[,-1]
+
+
+#Now we can run the knn function
+
+knn.predict <- knn(lyrics_train,lyrics_test,cl=as.factor(lyrics_decade$Decade),k=5)
+
+#Model Evaluation
+class_comparison <- data.frame(knn.predict,lyrics_test_decade)
+names(class_comparison) <-c("PredictedDecade","ObservedDecade")
+
+
+
+```
+
+At first glance, it appears that knn could have worked well. A confusion matrix will help futher evaluate the procedure.
+
+
+```{r Confusion Matrix, echo=FALSE}
+tab<-CrossTable(x = class_comparison$ObservedDecade, y = class_comparison$PredictedDecade, prop.chisq=FALSE, prop.c = FALSE, prop.r = FALSE, prop.t = FALSE)
+
+
+```
+
+
+
+
+```{r Accuracy}
+output <- as.matrix(tab$t)
+ accuracy <- function(x){sum(diag(as.numeric(x))/(sum(rowSums(x)))) * 100}
+ accuracy(as.numeric(output))
+
+```
+
+
+
+
+
+
