@@ -1,7 +1,8 @@
 ---
 title: "Project 1 - Song Analysis"
-output: html_notebook
 author: "Alexandra DeKinder"
+output: html_notebook
+
 ---
 
 
@@ -324,62 +325,64 @@ While at first glance it may seem that a 73% accuracy rate is not bad, upon clos
 The first method is re-sampling the data$^2$. Essentially, this means taking less data from the over-represented classes and more from the under-represented classes. Since the data set is fairly large, I will use under-sampling for songs in the 2000's and 2010's. Another method of over-sampling is SMOTE, which stands for synthetic minority over-sampling technique. SMOTE generates fake samples in the minority class. A non-sampling method would be to add weight to the minority classes in the algorithm. 
 
 
-```{r Rebalancing}
-#I will pull out 50% of the data from the 2000's and 2010's
-
-set.seed(1234)
-
-removed.rows.2000 <- sample(1:nrow(final_lyrics[final_lyrics$Decade == "2000", ]), #Randomly selecting rows
-                       .50*nrow(final_lyrics[final_lyrics$Decade == "2000", ]))
-
-removed.rows.2010 <- sample(1:nrow(final_lyrics[final_lyrics$Decade == "2010", ]),
-                       .50*nrow(final_lyrics[final_lyrics$Decade == "2010", ]))
-
-
-balanced_final_lyrics <- final_lyrics[-c(removed.rows.2000,removed.rows.2010),]
-
-```
-
 
 ```{r New KNN, echo=FALSE}
 #First split the data into training and test sets
 set.seed(1234)
-train.rows <- sample(1:nrow(balanced_final_lyrics),.80*nrow(balanced_final_lyrics))
+train.rows <- sample(1:nrow(final_lyrics),.80*nrow(final_lyrics))
 
 #Normalizing the numeric predictors and dummy code the genre variable
 
-norm.balanced_final_lyrics <- balanced_final_lyrics
+norm.final_lyrics <- final_lyrics
 
-norm.balanced_final_lyrics$sentiment <- normalize(balanced_final_lyrics$sentiment) #Normalizing variables
-norm.balanced_final_lyrics$Length <- normalize(balanced_final_lyrics$Length)
+norm.final_lyrics$sentiment <- normalize(final_lyrics$sentiment) #Normalizing variables
+norm.final_lyrics$Length <- normalize(final_lyrics$Length)
 
-Genre.data <-as.data.frame(dummy.code(norm.balanced_final_lyrics$genre)) #Dummy coding genre 
+Genre.data <-as.data.frame(dummy.code(norm.final_lyrics$genre)) #Dummy coding genre 
 
-norm.balanced_final_lyrics<-norm.balanced_final_lyrics[,-c(1:6)]
-norm.balanced_final_lyrics<-cbind(norm.balanced_final_lyrics,Genre.data) #Combining all the processed variables back together
+norm.final_lyrics<-norm.final_lyrics[,-c(1:6)]
+norm.final_lyrics<-cbind(norm.final_lyrics,Genre.data) #Combining all the processed variables back together
 
 
 #Separating training set
 
-lyrics_train <- norm.balanced_final_lyrics[train.rows,]
+lyrics_train <- norm.final_lyrics[train.rows,]
 
 #Separating test set
 
-lyrics_test <-  norm.balanced_final_lyrics[-train.rows,]
+lyrics_test <-  norm.final_lyrics[-train.rows,]
+```
+
+
+```{r Rebalancing Training Set}
+#Data rebalancing, this must be done after the data is split and only on the training set
+#I will pull out 50% of the data from the 2000's and 2010's
+
+set.seed(1234)
+
+removed.rows.2000 <- sample(1:nrow(lyrics_train[lyrics_train$Decade == "2000", ]), #Randomly selecting rows
+                       .50*nrow(lyrics_train[lyrics_train$Decade == "2000", ]))
+
+removed.rows.2010 <- sample(1:nrow(lyrics_train[lyrics_train$Decade == "2010", ]),
+                       .50*nrow(lyrics_train[lyrics_train$Decade == "2010", ]))
+
+
+balanced_lyrics_train <- lyrics_train[-c(removed.rows.2000,removed.rows.2010),]
+
 
 #Extract decade column since that is the response variable
 
-lyrics_decade <-(balanced_final_lyrics[train.rows,"Decade"])
-lyrics_train <- lyrics_train[,-1]
+lyrics_decade <-(balanced_lyrics_train[,"Decade"])
+balanced_lyrics_train <- balanced_lyrics_train[,-1]
 
 
-lyrics_test_decade <- (balanced_final_lyrics[-train.rows,"Decade"])
+lyrics_test_decade <- (lyrics_test[,"Decade"])
 lyrics_test <- lyrics_test[,-1]
 
 
 #Now we run the knn function
 
-knn.predict <- knn(lyrics_train,lyrics_test,cl=as.factor(lyrics_decade$Decade),k=7)
+knn.predict <- knn(balanced_lyrics_train,lyrics_test,cl=as.factor(lyrics_decade),k=7)
 
 
 ```
@@ -414,7 +417,7 @@ round(accuracy,2)
 
 ### Conclusions
 
-When I rebalanced the data and ran the KNN algorithm again the accuracy actually was slightly lower; however, it classified two songs from the 1990's correctly which it was only doing one before. There are several key takeaways from this. First, even wih removing 50% of the data from the 2000's and 2010's, the data is still unbalanced. In order to really balance the classes, a combination of under- and over-sampling could be a better approach. Second, another classification method completely could be a better way to answer the posed question. Finally, these song charactersitics might be not particulary useful in classifying songs into their decade. 
+When I rebalanced the data and ran the KNN algorithm again the accuracy actually was much lower. There are several key takeaways from this. First, even wih removing 50% of the data from the 2000's and 2010's, the data is still imbalanced. In order to really balance the classes, a combination of under- and over-sampling could be a better approach. Second, another classification method completely could be a better way to answer the posed question. Finally, these song charactersitics might be not particulary useful in classifying songs into their decade. 
 
 Data analysis questions are often a process, during which one will realize a selected approach is not working and must look to new methods to try and solve the problem. Also, one might conclude that asking a different question all together might lead to a more useful solution. No matter what the model says, our decades will continue to be defined by their music, and hopefully soon we can unlock the secret to what made each era of music so unique.
 
