@@ -25,4 +25,4 @@ proj/
 └── output/
 ```
 
-Please see each subfolder for a README file.
+Please see each subfolder for a README file. The final reports for this project can be found in the Final Reports subfolder of the Doc folder.
