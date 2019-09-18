@@ -321,9 +321,7 @@ round(accuracy,2)
 While at first glance it may seem that a 73% accuracy rate is not bad, upon closer inspection, there are some serious issues with the KNN clustering method. While the algorithm did well with the songs in the 2000's and 2010's, it did not correctly assign any of the songs from the earlier decades, except for 1 in the 1990's. A reason for this is because this data is known as imbalanced data. As it was shown before, a majority of the songs in the data set are from the most recent two decades and because of this, the KNN algorithm will try to assign most of the observations in the test set to these decades. Imbalanced data is not an uncommon problem and there are several methods to use in this situation.
 
 
-The first method is re-sampling the data$^2$. Essentially, this means taking less data from the over-represented classes and more from the under-represented classes. Since our data set is fairly large, we would use under-sampling for songs in the 2000's and 2010's. Another method of over-sampling is SMOTE, which stands for synthetic minority over-sampling technique. SMOTE generates fake samples in the minority class. A non-sampling method would be to add weight to the minority classes in the algorithm. 
-
-In order to try and fix this data, I will use the under-sampling technique and re-run the KNN algorithm.
+The first method is re-sampling the data$^2$. Essentially, this means taking less data from the over-represented classes and more from the under-represented classes. Since the data set is fairly large, I will use under-sampling for songs in the 2000's and 2010's. Another method of over-sampling is SMOTE, which stands for synthetic minority over-sampling technique. SMOTE generates fake samples in the minority class. A non-sampling method would be to add weight to the minority classes in the algorithm. 
 
 
 ```{r Rebalancing}
