@@ -9,18 +9,18 @@ This is the first and only *individual* (as opposed to *team*) this semester.
 
 Term: Fall 2019
 
-+ Projec title: Lorem ipsum dolor sit amet
-+ This project is conducted by [your name]
++ Projec title: Song Analysis
++ This project is conducted by Alexandra DeKinder
 
-+ Project summary: [a short summary] Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
++ Project summary: In this project I decided to use a KNN algorithm to classify songs into the decade they were written. Decades are often defined by their music and I wanted to use elements of the songs to show this from a data analytics perspective. I used the number of words in the song (length), genre, and a numeric sentiment score as my predictors. The first KNN run performed with 73% accuracy; however, this was misleading due to the imbalance in the data. After re-balancing using under-sampling in the over-represented categories, the accuracy rate was reduced to 8%. Further analysis would be needed to determine if classifying songs by their decade is possible, which could be in the form of finding new predictors or other algorithms.
 
-Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
 
 ```
 proj/
 ├── lib/
 ├── data/
 ├── doc/
+├── doc/Final Reports
 ├── figs/
 └── output/
 ```
