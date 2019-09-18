@@ -2,5 +2,5 @@
 
 ### Output folder
 
-The output directory contains analysis output, processed datasets, logs, or other processed things.
+This output directory contains analysis output from the Text_Processing.Rmd file. 
 
